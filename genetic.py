@@ -3,12 +3,15 @@ import random
 import statistics
 import time
 import sys
+from bisect import bisect_left
+from math import exp
 
 
 class Chromosome:
     def __init__(self, genes, fitness):
         self.Genes = genes
         self.Fitness = fitness
+        self.Age = 0
 
 
 def _generate_parent(length, geneSet, get_fitness):
@@ -38,22 +41,43 @@ def _mutate_custom(parent, custom_mutate, get_fitness):
     return Chromosome(childGenes, fitness)
 
 
-def _get_improvment(new_child, generate_parent):
-    bestParent = generate_parent()
+def _get_improvment(new_child, generate_parent, maxAge):
+    parent = bestParent = generate_parent()
     yield bestParent
+    historicalFitnesses = [bestParent.Fitness]
     while True:
-        child = new_child(bestParent)
-        if bestParent.Fitness > child.Fitness:
+        child = new_child(parent)
+        if parent.Fitness > child.Fitness:
+            if maxAge is None:
+                continue
+            parent.Age += 1
+            if maxAge > parent.Age:
+                continue
+            index = bisect_left(historicalFitnesses, child.Fitness, 0,
+                                len(historicalFitnesses))
+            proportionSimilar = index / len(historicalFitnesses)
+            if random.random() < exp(-proportionSimilar):
+                parent = child
+                continue
+            bestParent.Age = 0
+            parent = bestParent
             continue
-        if not child.Fitness > bestParent.Fitness:
+        if not child.Fitness > parent.Fitness:
+            # same fitness
+            child.Age = parent.Age + 1
+            parent = child
+            continue
+        child.Age = 0
+        parent = child
+        if child.Fitness > bestParent.Fitness:
             bestParent = child
-            continue
-        yield child
-        bestParent = child
+            yield bestParent
+            historicalFitnesses.append(bestParent.Fitness)
 
 
 def get_best(get_fitness, targetLen, optimalFitness, geneSet,
-             display, custom_mutate=None):
+             display, custom_mutate=None, custom_create=None,
+             maxAge=None):
     random.seed()
 
     if custom_mutate is None:
@@ -63,10 +87,15 @@ def get_best(get_fitness, targetLen, optimalFitness, geneSet,
         def fnMutate(parent):
             return _mutate_custom(parent, custom_mutate, get_fitness)
 
-    def fnGenrateParent():
-        return _generate_parent(targetLen, geneSet, get_fitness)
+    if custom_create is None:
+        def fnGenrateParent():
+            return _generate_parent(targetLen, geneSet, get_fitness)
+    else:
+        def fnGenrateParent():
+            genes = custom_create()
+            return Chromosome(genes, get_fitness(genes))
 
-    for improvment in _get_improvment(fnMutate, fnGenrateParent):
+    for improvment in _get_improvment(fnMutate, fnGenrateParent, maxAge):
         display(improvment)
         if not optimalFitness > improvment.Fitness:
             return improvment
