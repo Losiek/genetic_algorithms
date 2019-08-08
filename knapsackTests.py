@@ -101,6 +101,56 @@ def display(candidate, startTime):
         candidate.Fitness,
         timeDiff))
 
+def load_data(localFileName):
+    with open(localFileName, mode='r') as infile:
+        lines = infile.read().splitlines()
+
+    data = KnapsackProblemData()
+    f = find_constraint
+
+    for line in lines:
+        f = f(line.strip(), data)
+        if f is None:
+            break
+    return data
+
+def find_constraint(line, data):
+    parts = line.split(' ')
+    if parts[0] != "c:":
+        return find_constraint
+    data.MaxWeight = int(parts[1])
+    return find_data_start
+
+def find_data_start(line, data):
+    if line != "begin data":
+        return find_data_start
+    return read_resources_or_find_data_end
+
+def read_resources_or_find_data_end(line, data):
+    if line == "end data":
+        return find_solution_start
+    parts = line.split('\t')
+    resource = Resource("R" + str(1 + len(data.Resources)), int(parts[1]),
+                        int(parts[0]), 0)
+    data.Resources.append(resource)
+    return read_resources_or_find_data_end
+
+def find_solution_start(line, data):
+    if line == "sol:":
+        return read_solution_resources_or_find_solution_end
+    return find_solution_start
+
+def read_solution_resources_or_find_solution_end(line, data):
+    if line == "":
+        return None
+    parts = [p for p in line.split('\t') if p != ""]
+    resourceIndex = int(parts[0]) - 1   # make it 0 based
+    resourceQuantity = int(parts[1])
+    data.Solution.append(ItemQuantity(data.Resources[resourceIndex],
+                                      resourceQuantity))
+    return read_solution_resources_or_find_solution_end
+
+
 class Resource:
     def __init__(self, name, value, weight, volume):
         self.Name = name
@@ -137,6 +187,11 @@ class Fitness:
                 self.TotalVolume,
                 self.TotalValue)
 
+class KnapsackProblemData:
+    def __init__(self):
+        self.Resources = []
+        self.MaxWeight = 0
+        self.Solution = []
 
 class KnapsackTests(unittest.TestCase):
     def test_cookies(self):
@@ -150,6 +205,14 @@ class KnapsackTests(unittest.TestCase):
         optimal = get_fitness([ItemQuantity(items[0], 1),
                                ItemQuantity(items[1], 14),
                                ItemQuantity(items[2], 6)])
+        self.fill_knapsack(items, maxWeight, maxVolume, optimal)
+
+    def test_exnsd16(self):
+        problemInfo = load_data("exnsd16.ukp")
+        items = problemInfo.Resources
+        maxWeight = problemInfo.MaxWeight
+        maxVolume = 0
+        optimal = get_fitness(problemInfo.Solution)
         self.fill_knapsack(items, maxWeight, maxVolume, optimal)
 
     def fill_knapsack(self, items, maxWeight, maxVolume, optimalFitness):
