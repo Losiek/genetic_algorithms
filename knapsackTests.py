@@ -49,7 +49,8 @@ def create(items, maxWeight, maxVolume):
     return genes
 
 
-def mutate(genes, items, maxWeight, maxVolume):
+def mutate(genes, items, maxWeight, maxVolume, window):
+    window.slide()
     fitness = get_fitness(genes)
     remainingWeight = maxWeight - fitness.TotalWeight
     remainingVolume = maxVolume - fitness.TotalVolume
@@ -81,13 +82,15 @@ def mutate(genes, items, maxWeight, maxVolume):
 
     changeItem = len(genes) < len(items) and random.randint(0, 4) == 0
     if changeItem:
-        itema, itemb = random.sample(items, 2)
-        item = itema if itema != item else itemb
-
+        itemIndex = items.index(iq.Item)
+        start = max(1, itemIndex - window.Size)
+        stop = min(len(items) - 1, itemIndex + window.Size)
+        item = items[random.randint(start, stop)]
     maxQuantity = max_quantity(item, remainingWeight, remainingVolume)
     if maxQuantity > 0:
-        quantity = random.randint(1, maxQuantity)
-        genes[index] = ItemQuantity(item, quantity)
+        genes[index] = ItemQuantity(item,
+                                    maxQuantity if window.Size > 1 else
+                                    random.randint(1, maxQuantity))
     else:
         del genes[index]
 
@@ -197,6 +200,16 @@ class Fitness:
         )
 
 
+class Window:
+    def __init__(self, minimum, maximum, size):
+        self.Min = minimum
+        self.Max = maximum
+        self.Size = size
+
+    def slide(self):
+        self.Size = self.Size - 1 if self.Size > self.Min else self.Max
+
+
 class KnapsackProblemData:
     def __init__(self):
         self.Resources = []
@@ -230,8 +243,14 @@ class KnapsackTests(unittest.TestCase):
         optimal = get_fitness(problemInfo.Solution)
         self.fill_knapsack(items, maxWeight, maxVolume, optimal)
 
+    def test_benchmark(self):
+        genetic.Benchmark.run(lambda: self.test_exnsd16())
+
     def fill_knapsack(self, items, maxWeight, maxVolume, optimalFitness):
         startTime = datetime.datetime.now()
+        window = Window(1, max(1, int(len(items) / 3)), int(len(items) / 2))
+
+        sortedItems = sorted(items, key=lambda item: item.Value)
 
         def fnDisplay(candidate):
             display(candidate, startTime)
@@ -243,7 +262,7 @@ class KnapsackTests(unittest.TestCase):
             return create(items, maxWeight, maxVolume)
 
         def fnMutate(genes):
-            mutate(genes, items, maxWeight, maxVolume)
+            mutate(genes, sortedItems, maxWeight, maxVolume, window)
 
         best = genetic.get_best(
             fnGetFitness,
