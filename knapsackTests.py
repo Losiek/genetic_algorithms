@@ -5,6 +5,7 @@ import random
 
 import genetic
 
+
 def get_fitness(genes):
     totalWeight = 0
     totalVolume = 0
@@ -19,10 +20,10 @@ def get_fitness(genes):
 
 
 def max_quantity(item, maxWeight, maxVolume):
-    return min(int(maxWeight / item.Weight)
-            if item.Weight > 0 else sys.maxsize,
-            int(maxVolume / item.Volume)
-            if item.Volume > 0 else sys.maxsize)
+    return min(
+        int(maxWeight / item.Weight) if item.Weight > 0 else sys.maxsize,
+        int(maxVolume / item.Volume) if item.Volume > 0 else sys.maxsize,
+    )
 
 
 def add(genes, items, maxWeight, maxVolume):
@@ -33,6 +34,7 @@ def add(genes, items, maxWeight, maxVolume):
 
     maxQuantity = max_quantity(item, maxWeight, maxVolume)
     return ItemQuantity(item, maxQuantity) if maxQuantity > 0 else None
+
 
 def create(items, maxWeight, maxVolume):
     genes = []
@@ -61,9 +63,10 @@ def mutate(genes, items, maxWeight, maxVolume):
         remainingVolume += item.Volume * iq.Quantity
         del genes[index]
 
-    adding = (remainingWeight > 0 or remainingVolume > 0) and \
-             (len(genes) == 0 or \
-             (len(genes) < len(items) and random.randint(0, 100) == 0))
+    adding = (remainingWeight > 0 or remainingVolume > 0) and (
+        len(genes) == 0 or (len(genes) < len(items)
+                            and random.randint(0, 100) == 0)
+    )
     if adding:
         newGene = add(genes, items, remainingWeight, remainingVolume)
         if newGene is not None:
@@ -88,6 +91,7 @@ def mutate(genes, items, maxWeight, maxVolume):
     else:
         del genes[index]
 
+
 def display(candidate, startTime):
     timeDiff = datetime.datetime.now() - startTime
     genes = candidate.Genes[:]
@@ -96,13 +100,13 @@ def display(candidate, startTime):
     descriptions = [str(iq.Quantity) + "x" + iq.Item.Name for iq in genes]
     if len(descriptions) == 0:
         descriptions.append("Empty")
-    print("{}\t{}\t{}".format(
-        ', '.join(descriptions),
-        candidate.Fitness,
-        timeDiff))
+    print("{}\t{}\t{}".format(", ".join(descriptions),
+                              candidate.Fitness,
+                              timeDiff))
+
 
 def load_data(localFileName):
-    with open(localFileName, mode='r') as infile:
+    with open(localFileName, mode="r") as infile:
         lines = infile.read().splitlines()
 
     data = KnapsackProblemData()
@@ -114,37 +118,43 @@ def load_data(localFileName):
             break
     return data
 
+
 def find_constraint(line, data):
-    parts = line.split(' ')
+    parts = line.split(" ")
     if parts[0] != "c:":
         return find_constraint
     data.MaxWeight = int(parts[1])
     return find_data_start
+
 
 def find_data_start(line, data):
     if line != "begin data":
         return find_data_start
     return read_resources_or_find_data_end
 
+
 def read_resources_or_find_data_end(line, data):
     if line == "end data":
         return find_solution_start
-    parts = line.split('\t')
-    resource = Resource("R" + str(1 + len(data.Resources)), int(parts[1]),
-                        int(parts[0]), 0)
+    parts = line.split("\t")
+    resource = Resource(
+        "R" + str(1 + len(data.Resources)), int(parts[1]), int(parts[0]), 0
+    )
     data.Resources.append(resource)
     return read_resources_or_find_data_end
+
 
 def find_solution_start(line, data):
     if line == "sol:":
         return read_solution_resources_or_find_solution_end
     return find_solution_start
 
+
 def read_solution_resources_or_find_solution_end(line, data):
     if line == "":
         return None
-    parts = [p for p in line.split('\t') if p != ""]
-    resourceIndex = int(parts[0]) - 1   # make it 0 based
+    parts = [p for p in line.split("\t") if p != ""]
+    resourceIndex = int(parts[0]) - 1  # make it 0 based
     resourceQuantity = int(parts[1])
     data.Solution.append(ItemQuantity(data.Resources[resourceIndex],
                                       resourceQuantity))
@@ -183,9 +193,9 @@ class Fitness:
 
     def __str__(self):
         return "wt: {:0.2f} vol: {:0.2f} value: {}".format(
-                self.TotalWeight,
-                self.TotalVolume,
-                self.TotalValue)
+            self.TotalWeight, self.TotalVolume, self.TotalValue
+        )
+
 
 class KnapsackProblemData:
     def __init__(self):
@@ -193,18 +203,23 @@ class KnapsackProblemData:
         self.MaxWeight = 0
         self.Solution = []
 
+
 class KnapsackTests(unittest.TestCase):
     def test_cookies(self):
         items = [
-                Resource("Flour", 1680, 0.265, .41),
-                Resource("Butter", 1440, 0.5, .13),
-                Resource("Sugar", 1840, 0.441, .29)
-            ]
+            Resource("Flour", 1680, 0.265, 0.41),
+            Resource("Butter", 1440, 0.5, 0.13),
+            Resource("Sugar", 1840, 0.441, 0.29),
+        ]
         maxWeight = 10
         maxVolume = 4
-        optimal = get_fitness([ItemQuantity(items[0], 1),
-                               ItemQuantity(items[1], 14),
-                               ItemQuantity(items[2], 6)])
+        optimal = get_fitness(
+            [
+                ItemQuantity(items[0], 1),
+                ItemQuantity(items[1], 14),
+                ItemQuantity(items[2], 6),
+            ]
+        )
         self.fill_knapsack(items, maxWeight, maxVolume, optimal)
 
     def test_exnsd16(self):
@@ -230,10 +245,18 @@ class KnapsackTests(unittest.TestCase):
         def fnMutate(genes):
             mutate(genes, items, maxWeight, maxVolume)
 
-        best = genetic.get_best(fnGetFitness, None, optimalFitness, None,
-                                fnDisplay, fnMutate, fnCreate, maxAge=50)
+        best = genetic.get_best(
+            fnGetFitness,
+            None,
+            optimalFitness,
+            None,
+            fnDisplay,
+            fnMutate,
+            fnCreate,
+            maxAge=50,
+        )
         self.assertTrue(not optimalFitness > best.Fitness)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
