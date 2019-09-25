@@ -118,7 +118,8 @@ class TravelingSalesmanTests(unittest.TestCase):
         optimalFitness = fnGetFitness(optimalSequence)
         startTime = datetime.datetime.now()
         best = genetic.get_best(fnGetFitness, None, optimalFitness, None,
-                                fnDisplay, fnMutate, fnCreate, maxAge=500)
+                                fnDisplay, fnMutate, fnCreate, maxAge=500,
+                                poolSize=25)
         self.assertTrue(not optimalFitness > best.Fitness)
 
 

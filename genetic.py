@@ -41,11 +41,23 @@ def _mutate_custom(parent, custom_mutate, get_fitness):
     return Chromosome(childGenes, fitness)
 
 
-def _get_improvment(new_child, generate_parent, maxAge):
-    parent = bestParent = generate_parent()
+def _get_improvment(new_child, generate_parent, maxAge, poolSize):
+    bestParent = generate_parent()
     yield bestParent
+    parents = [bestParent]
     historicalFitnesses = [bestParent.Fitness]
+    for _ in range(poolSize - 1):
+        parent = generate_parent()
+        if parent.Fitness > bestParent.Fitness:
+            yield parent
+            bestParent = parent
+            historicalFitnesses.append(parent.Fitness)
+        parents.append(parent)
+    lastParentIndex = poolSize - 1
+    pindex = 1
     while True:
+        pindex = pindex - 1 if pindex > 0 else lastParentIndex
+        parent = parents[pindex]
         child = new_child(parent)
         if parent.Fitness > child.Fitness:
             if maxAge is None:
@@ -57,18 +69,18 @@ def _get_improvment(new_child, generate_parent, maxAge):
                                 len(historicalFitnesses))
             proportionSimilar = index / len(historicalFitnesses)
             if random.random() < exp(-proportionSimilar):
-                parent = child
+                parents[pindex] = child
                 continue
             bestParent.Age = 0
-            parent = bestParent
+            parents[pindex] = bestParent
             continue
         if not child.Fitness > parent.Fitness:
             # same fitness
             child.Age = parent.Age + 1
-            parent = child
+            parents[pindex] = child
             continue
         child.Age = 0
-        parent = child
+        parents[pindex] = child
         if child.Fitness > bestParent.Fitness:
             bestParent = child
             yield bestParent
@@ -77,7 +89,7 @@ def _get_improvment(new_child, generate_parent, maxAge):
 
 def get_best(get_fitness, targetLen, optimalFitness, geneSet,
              display, custom_mutate=None, custom_create=None,
-             maxAge=None):
+             maxAge=None, poolSize=1):
     random.seed()
 
     if custom_mutate is None:
@@ -95,7 +107,8 @@ def get_best(get_fitness, targetLen, optimalFitness, geneSet,
             genes = custom_create()
             return Chromosome(genes, get_fitness(genes))
 
-    for improvment in _get_improvment(fnMutate, fnGenrateParent, maxAge):
+    for improvment in _get_improvment(fnMutate, fnGenrateParent, maxAge,
+                                      poolSize):
         display(improvment)
         if not optimalFitness > improvment.Fitness:
             return improvment
