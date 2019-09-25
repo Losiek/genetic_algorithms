@@ -3,6 +3,7 @@ import unittest
 import datetime
 import math
 import random
+from itertools import chain
 
 import genetic
 
@@ -28,9 +29,10 @@ def get_fitness(genes, idToLocationLookup):
 
 def display(candidate, startTime):
     timeDiff = datetime.datetime.now() - startTime
-    print("{}\t{}\t{}".format(
+    print("{}\t{}\t{}\t{}".format(
         ' '.join(map(str, candidate.Genes)),
         candidate.Fitness,
+        candidate.Strategy.name,
         timeDiff))
 
 
@@ -72,7 +74,44 @@ def crossover(parentGenes, donorGenes, fnGetFitness):
 
     for i in range(len(donorGenes) - 1):
         pairs[Pair(donorGenes[i], donorGenes[i + 1])] = 0
-        tempGenes = parentGenes[:]
+
+    tempGenes = parentGenes[:]
+    if Pair(parentGenes[0], parentGenes[-1]) in pairs:
+        # find a discontinuity
+        found = False
+        for i in range(len(parentGenes) - 1):
+            if Pair(parentGenes[i], parentGenes[i + 1]) in pairs:
+                continue
+            tempGenes = parentGenes[i + 1:] + parentGenes[:i + 1]
+            found = True
+            break
+        if not found:
+            return None
+
+    runs = [[tempGenes[0]]]
+    for i in range(len(tempGenes) - 1):
+        if Pair(tempGenes[i], tempGenes[i + 1]) in pairs:
+            runs[-1].append(tempGenes[i + 1])
+            continue
+        runs.append([tempGenes[i + 1]])
+
+    initialFitness = fnGetFitness(parentGenes)
+    count = random.randint(2, 20)
+    runIndexes = range(len(runs))
+    while count > 0:
+        count -= 1
+        for i in runIndexes:
+            if len(runs[i]) == 1:
+                continue
+            if random.randint(0, len(runs)) == 0:
+                runs[i] = [n for n in reversed(runs[i])]
+
+        indexA, indexB = random.sample(runIndexes, 2)
+        runs[indexA], runs[indexB] = runs[indexB], runs[indexA]
+        childGenes = list(chain.from_iterable(runs))
+        if fnGetFitness(childGenes) > initialFitness:
+            return childGenes
+    return childGenes
 
 
 class Fitness:
@@ -123,6 +162,9 @@ class TravelingSalesmanTests(unittest.TestCase):
                            8, 15, 5, 11, 9, 10, 7, 6]
         self.solve(idToLocationLookup, optimalSequence)
 
+    def test_benchmark(self):
+        genetic.Benchmark.run(lambda: self.test_ulysses16())
+
     def solve(self, idToLocationLookup, optimalSequence):
         geneset = [i for i in idToLocationLookup.keys()]
 
@@ -137,6 +179,9 @@ class TravelingSalesmanTests(unittest.TestCase):
 
         def fnMutate(genes):
             mutate(genes, fnGetFitness)
+
+        def fnCrossover(parent, donor):
+            return crossover(parent, donor, fnGetFitness)
 
         optimalFitness = fnGetFitness(optimalSequence)
         startTime = datetime.datetime.now()

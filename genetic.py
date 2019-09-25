@@ -124,6 +124,7 @@ def get_best(get_fitness, targetLen, optimalFitness, geneSet,
     usedStrategies = [strategyLookup[Strategies.Mutate]]
     if crossover is not None:
         usedStrategies.append(strategyLookup[Strategies.Crossover])
+
         def fnNewChild(parent, index, parents):
             return random.choice(usedStrategies)(parent, index, parents)
     else:
@@ -143,9 +144,9 @@ def get_best(get_fitness, targetLen, optimalFitness, geneSet,
     else:
         def fnGenrateParent():
             genes = custom_create()
-            return Chromosome(genes, get_fitness(genes))
+            return Chromosome(genes, get_fitness(genes), Strategies.Create)
 
-    for improvment in _get_improvment(fnMutate, fnGenrateParent, maxAge,
+    for improvment in _get_improvment(fnNewChild, fnGenrateParent, maxAge,
                                       poolSize):
         display(improvment)
         f = strategyLookup[improvment.Strategy]
