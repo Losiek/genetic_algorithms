@@ -67,6 +67,14 @@ def load_data(localFileName):
     return idToLocationLookup
 
 
+def crossover(parentGenes, donorGenes, fnGetFitness):
+    pairs = {Pair(donorGenes[0], donorGenes[-1]): 0}
+
+    for i in range(len(donorGenes) - 1):
+        pairs[Pair(donorGenes[i], donorGenes[i + 1])] = 0
+        tempGenes = parentGenes[:]
+
+
 class Fitness:
     def __init__(self, totalDistance):
         self.TotalDistance = totalDistance
@@ -76,6 +84,21 @@ class Fitness:
 
     def __str__(self):
         return "{:0.2f}".format(self.TotalDistance)
+
+
+class Pair:
+    def __init__(self, node, adjacent):
+        if node < adjacent:
+            node, adjacent = adjacent, node
+        self.Node = node
+        self.Adjacent = adjacent
+
+    def __eq__(self, other):
+        return self.Node == other.Node and \
+               self.Adjacent == other.Adjacent
+
+    def __hash__(self):
+        return hash(self.Node) * 397 ^ hash(self.Adjacent)
 
 
 class TravelingSalesmanTests(unittest.TestCase):
@@ -119,7 +142,7 @@ class TravelingSalesmanTests(unittest.TestCase):
         startTime = datetime.datetime.now()
         best = genetic.get_best(fnGetFitness, None, optimalFitness, None,
                                 fnDisplay, fnMutate, fnCreate, maxAge=500,
-                                poolSize=25)
+                                poolSize=25, crossover=fnCrossover)
         self.assertTrue(not optimalFitness > best.Fitness)
 
 
