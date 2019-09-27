@@ -5,6 +5,18 @@ import genetic
 import random
 
 
+def add(a, b):
+    return a + b
+
+
+def subtract(a, b):
+    return a - b
+
+
+def multiply(a, b):
+    return a * b
+
+
 def evaluate(genes, prioritizedOperations):
     equation = genes[:]
     for operationSet in prioritizedOperations:
@@ -15,14 +27,8 @@ def evaluate(genes, prioritizedOperations):
             if opToken in operationSet:
                 leftOperand = equation[i - 1]
                 rightOperand = equation[i + 1]
-
-                if opToken == '+':
-                    leftOperand += rightOperand
-                elif opToken == '-':
-                    leftOperand -= rightOperand
-                elif opToken == '*':
-                    leftOperand *= rightOperand
-                equation[i - 1] = leftOperand
+                equation[i - 1] = operationSet[opToken](leftOperand,
+                                                        rightOperand)
                 del equation[i + 1]
                 del equation[i]
                 iOffset -= 2
@@ -83,8 +89,17 @@ def get_fitness(genes, expectedTotal, fnEvaluate):
 class EquationGenerationTest(unittest.TestCase):
     def test_addition(self):
         operations = ['+', '-']
-        prioritizedOperations = [['+', '-']]
+        prioritizedOperations = [{'+': add,
+                                  '-': subtract}]
         optimalLengthSolution = [7, '+', 7, '+', 7, '+', 7, '+', 7, '-', 6]
+        self.solve(operations, prioritizedOperations, optimalLengthSolution)
+
+    def test_multiplication(self):
+        operations = ['+', '-', '*']
+        prioritizedOperations = [{'*': multiply},
+                                 {'+': add,
+                                  '-': subtract}]
+        optimalLengthSolution = [6, '*', 3, '*', 3, '*', 6, '-', 7]
         self.solve(operations, prioritizedOperations, optimalLengthSolution)
 
     def solve(self, operations, prioritizedOperations, optimalLengthSolution):
@@ -113,12 +128,6 @@ class EquationGenerationTest(unittest.TestCase):
         best = genetic.get_best(fnGetFitness, None, optimalFitness, None,
                                 fnDisplay, fnMutate, fnCreate, maxAge=50)
         self.assertTrue(not optimalFitness > best.Fitness)
-
-    def test_multiplication(self):
-        operations = ['+', '-', '*']
-        prioritizedOperations = [['*'], ['+', '-']]
-        optimalLengthSolution = [6, '*', 3, '*', 3, '*', 6, '-', 7]
-        self.solve(operations, prioritizedOperations, optimalLengthSolution)
 
 
 if __name__ == '__main__':
