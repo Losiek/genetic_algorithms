@@ -5,16 +5,28 @@ import genetic
 import random
 
 
-def evaluate(genes):
-    result = genes[0]
-    for i in range(1, len(genes), 2):
-        operation = genes[i]
-        nextValue = genes[i + 1]
-        if operation == '+':
-            result += nextValue
-        elif operation == '-':
-            result -= nextValue
-    return result
+def evaluate(genes, prioritizedOperations):
+    equation = genes[:]
+    for operationSet in prioritizedOperations:
+        iOffset = 0
+        for i in range(1, len(equation), 2):
+            i += iOffset
+            opToken = equation[i]
+            if opToken in operationSet:
+                leftOperand = equation[i - 1]
+                rightOperand = equation[i + 1]
+
+                if opToken == '+':
+                    leftOperand += rightOperand
+                elif opToken == '-':
+                    leftOperand -= rightOperand
+                elif opToken == '*':
+                    leftOperand *= rightOperand
+                equation[i - 1] = leftOperand
+                del equation[i + 1]
+                del equation[i]
+                iOffset -= 2
+    return equation[0]
 
 
 def create(numbers, operations, minNumbers, maxNumbers):
@@ -57,8 +69,8 @@ def display(candidate, startTime):
         timeDiff))
 
 
-def get_fitness(genes, expectedTotal):
-    result = evaluate(genes)
+def get_fitness(genes, expectedTotal, fnEvaluate):
+    result = fnEvaluate(genes)
 
     if result != expectedTotal:
         fitness = expectedTotal - abs(result - expectedTotal)
@@ -69,20 +81,27 @@ def get_fitness(genes, expectedTotal):
 
 
 class EquationGenerationTest(unittest.TestCase):
-    def test(self):
-        numbers = [1, 2, 3, 4, 5, 6, 7]
+    def test_addition(self):
         operations = ['+', '-']
-        expectedTotal = 29
+        prioritizedOperations = [['+', '-']]
         optimalLengthSolution = [7, '+', 7, '+', 7, '+', 7, '+', 7, '-', 6]
+        self.solve(operations, prioritizedOperations, optimalLengthSolution)
+
+    def solve(self, operations, prioritizedOperations, optimalLengthSolution):
+        numbers = [1, 2, 3, 4, 5, 6, 7]
+        expectedTotal = evaluate(optimalLengthSolution, prioritizedOperations)
         minNumbers = (1 + len(optimalLengthSolution)) / 2
         maxNumbers = 6 * minNumbers
         startTime = datetime.datetime.now()
+
+        def fnEvaluate(genes):
+            return evaluate(genes, prioritizedOperations)
 
         def fnDisplay(candidate):
             display(candidate, startTime)
 
         def fnGetFitness(genes):
-            return get_fitness(genes, expectedTotal)
+            return get_fitness(genes, expectedTotal, fnEvaluate)
 
         def fnCreate():
             return create(numbers, operations, minNumbers, maxNumbers)
@@ -94,6 +113,12 @@ class EquationGenerationTest(unittest.TestCase):
         best = genetic.get_best(fnGetFitness, None, optimalFitness, None,
                                 fnDisplay, fnMutate, fnCreate, maxAge=50)
         self.assertTrue(not optimalFitness > best.Fitness)
+
+    def test_multiplication(self):
+        operations = ['+', '-', '*']
+        prioritizedOperations = [['*'], ['+', '-']]
+        optimalLengthSolution = [6, '*', 3, '*', 3, '*', 6, '-', 7]
+        self.solve(operations, prioritizedOperations, optimalLengthSolution)
 
 
 if __name__ == '__main__':
