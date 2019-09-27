@@ -102,6 +102,15 @@ class EquationGenerationTest(unittest.TestCase):
         optimalLengthSolution = [6, '*', 3, '*', 3, '*', 6, '-', 7]
         self.solve(operations, prioritizedOperations, optimalLengthSolution)
 
+    def test_exponent(self):
+        operations = ['^', '+', '-', '*']
+        prioritizedOperations = [{'^': lambda a, b: a ** b},
+                                 {'*': multiply},
+                                 {'+': add,
+                                  '-': subtract}]
+        optimalLengthSolution = [6, '^', 3, '*', 2, '-', 5]
+        self.solve(operations, prioritizedOperations, optimalLengthSolution)
+
     def solve(self, operations, prioritizedOperations, optimalLengthSolution):
         numbers = [1, 2, 3, 4, 5, 6, 7]
         expectedTotal = evaluate(optimalLengthSolution, prioritizedOperations)
