@@ -30,6 +30,19 @@ class Turn:
     def __str__(self):
         return "turn"
 
+
+class Jump:
+    def __init__(self, foward, right):
+        self.Foward = foward
+        self.Right = right
+
+    def execute(self, mower, field):
+        mower.jump(field, self.Foward, self.Right)
+
+    def __str__(self):
+        return "jump({},{})".format(self.Foward, self.Right)
+
+
 class Program:
     def __init__(self, instructions):
         self.Main = instructions
@@ -44,7 +57,7 @@ class Program:
 
 def create(geneSet, minGenes, maxGenes):
     numGenes = random.randint(minGenes, maxGenes)
-    genes = [random.choice(geneSet) for _ in range(1, numGenes)]
+    genes = [random.choice(geneSet)() for _ in range(1, numGenes)]
     return genes
 
 
@@ -74,7 +87,7 @@ def mutate(genes, geneSet, minGenes, maxGenes, fnGetFitness, maxRounds):
                 (len(genes) < maxGenes and
                  random.randint(0, 5) == 0)
         if adding:
-            genes.append(random.choice(geneSet))
+            genes.append(random.choice(geneSet)())
             continue
 
         removing = len(genes) > minGenes and \
@@ -85,7 +98,7 @@ def mutate(genes, geneSet, minGenes, maxGenes, fnGetFitness, maxRounds):
             continue
 
         index = random.randrange(0, len(genes))
-        genes[index] = random.choice(geneSet)
+        genes[index] = random.choice(geneSet)()
 
 
 def crossover(parent, otherParent):
@@ -114,16 +127,36 @@ class Fitness:
 
 
 class LownmowerTests(unittest.TestCase):
-    def test(self):
-        geneSet = [Mow(), Turn()]
+    def test_mow_turn(self):
         width = height = 8
-        mowerStartLocation = lawnmower.Location(int(width / 2), int(height / 2))
-        mowerStartDirection = lawnmower.Directions.South.value
-        startTime = datetime.datetime.now()
-
+        geneSet = [lambda: Mow(),
+                   lambda: Turn()]
         minGenes = width * height
         maxGenes = int(1.5 * minGenes)
         maxMutationRounds = 3
+        expactedNumberOfInstructions = 78
+        self.run_with(geneSet, width, height, minGenes, maxGenes,
+                      expactedNumberOfInstructions, maxMutationRounds)
+
+    def test_mow_turn_jump(self):
+        width = height = 8
+        geneSet = [lambda: Mow(),
+                   lambda: Turn(),
+                   lambda: Jump(random.randint(0, min(width, height)),
+                                random.randint(0, min(width, height)))]
+        minGenes =  width * height
+        maxGenes = int(1.5 * minGenes)
+        maxMutationRounds = 1
+        expactedNumberOfInstructions = 64
+        self.run_with(geneSet, width, height, minGenes, maxGenes,
+                      expactedNumberOfInstructions, maxMutationRounds)
+
+    def run_with(self, geneSet, width, height, minGenes, maxGenes,
+                 expactedNumberOfInstructions, maxMutationRounds):
+        mowerStartLocation = lawnmower.Location(int(width / 2), int(height / 2))
+        mowerStartDirection = lawnmower.Directions.South.value
+
+        startTime = datetime.datetime.now()
 
         def fnCreate():
             return create(geneSet, 1, height)
@@ -144,14 +177,12 @@ class LownmowerTests(unittest.TestCase):
         def fnMutate(child):
             mutate(child, geneSet, minGenes, maxGenes, fnGetFitness, maxMutationRounds)
 
-        expactedNumberOfInstructions = 78
         optimalFitness = Fitness(width * height, expactedNumberOfInstructions)
 
         best = genetic.get_best(fnGetFitness, None, optimalFitness, None,
                                 fnDisplay, fnMutate, fnCreate,
                                 poolSize=10, crossover=crossover)
         self.assertTrue(not optimalFitness > best.Fitness)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -87,6 +87,15 @@ class Directions(Enum):
                             if i.value.Index == newIndex)
         return newDirection.value
 
+    @staticmethod
+    def get_direction_after_turn_right_90_degress(direction):
+        newIndex = direction.Index + 1 \
+                if direction.Index < len(Directions) - 1 \
+                else 0
+        newDirection = next(i for i in Directions
+                            if i.value.Index == newIndex)
+        return newDirection.value
+
 
 class Mower:
     def __init__(self, location, direction):
@@ -106,3 +115,14 @@ class Mower:
         field.set(self.Location, self.StepCount
                 if self.StepCount > 9
                 else " {}".format(self.StepCount))
+
+    def jump(self, field, forward, right):
+        newFowardLocation = self.Direction.move_from(self.Location, forward)
+        rightDirection = Directions.get_direction_after_turn_right_90_degress(self.Direction)
+        newLocation = rightDirection.move_from(newFowardLocation, right)
+        self.Location = field.fix_location(newLocation)
+        self.StepCount += 1
+        field.set(self.Location, self.StepCount
+                if self.StepCount > 9
+                else " {}".format(self.StepCount))
+
