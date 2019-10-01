@@ -29,20 +29,6 @@ class Field:
     def set(self, location, symbol):
         self.Field[location.Y][location.X] = symbol
 
-    def fix_location(self, location):
-        newLocation = Location(location.X, location.Y)
-        if newLocation.X < 0:
-            newLocation.X += self.Width
-        elif newLocation.X >= self.Width:
-            newLocation.X %= self.Width
-
-        if newLocation.Y < 0:
-            newLocation.Y += self.Height
-        elif newLocation.Y >= self.Height:
-            newLocation.Y %= self.Height
-
-        return newLocation
-
     def count_mowed(self):
         return sum(1 for row in range(self.Height)
                      for column in range(self.Width)
@@ -58,6 +44,38 @@ class Field:
                         FieldContents.Mower, mower.Direction.Symbol)
                 row = ' '.join(map(str, r))
             print(row)
+
+
+class ValidatingField(Field):
+    def __init__(self, width, height, initialContent):
+        super().__init__(width, height, initialContent)
+
+    def fix_location(self, location):
+        if location.X >= self.Width or \
+                location.X < 0 or \
+                location.Y >= self.Height or \
+                location.Y < 0:
+            return None, False
+        return location, True
+
+
+class ToroidField(Field):
+    def __init__(self, width, height, initialContent):
+        super().__init__(width, height, initialContent)
+
+    def fix_location(self, location):
+        newLocation = Location(location.X, location.Y)
+        if newLocation.X < 0:
+            newLocation.X += self.Width
+        elif newLocation.X >= self.Width:
+            newLocation.X %= self.Width
+
+        if newLocation.Y < 0:
+            newLocation.Y += self.Height
+        elif newLocation.Y >= self.Height:
+            newLocation.Y %= self.Height
+
+        return newLocation, True
 
 
 class Direction:
@@ -109,20 +127,24 @@ class Mower:
                 self.Direction)
 
     def mow(self, field):
-        newLocaion = self.Direction.move_from(self.Location)
-        self.Location = field.fix_location(newLocaion)
-        self.StepCount += 1
-        field.set(self.Location, self.StepCount
-                if self.StepCount > 9
-                else " {}".format(self.StepCount))
+        newLocation = self.Direction.move_from(self.Location)
+        newLocation, isValid = field.fix_location(newLocation)
+        if isValid:
+            self.Location = newLocation
+            self.StepCount += 1
+            field.set(self.Location, self.StepCount
+                    if self.StepCount > 9
+                    else " {}".format(self.StepCount))
 
     def jump(self, field, forward, right):
-        newFowardLocation = self.Direction.move_from(self.Location, forward)
+        newLocation = self.Direction.move_from(self.Location, forward)
         rightDirection = Directions.get_direction_after_turn_right_90_degress(self.Direction)
-        newLocation = rightDirection.move_from(newFowardLocation, right)
-        self.Location = field.fix_location(newLocation)
-        self.StepCount += 1
-        field.set(self.Location, self.StepCount
-                if self.StepCount > 9
-                else " {}".format(self.StepCount))
+        newLocation = rightDirection.move_from(newLocation, right)
+        newLocation, isValid = field.fix_location(newLocation)
+        if isValid:
+            self.Location = newLocation
+            self.StepCount += 1
+            field.set(self.Location, self.StepCount
+                    if self.StepCount > 9
+                    else " {}".format(self.StepCount))
 

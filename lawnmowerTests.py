@@ -135,8 +135,12 @@ class LownmowerTests(unittest.TestCase):
         maxGenes = int(1.5 * minGenes)
         maxMutationRounds = 3
         expactedNumberOfInstructions = 78
+
+        def fnCreateField():
+            return lawnmower.ToroidField(width, height, lawnmower.FieldContents.Grass)
+
         self.run_with(geneSet, width, height, minGenes, maxGenes,
-                      expactedNumberOfInstructions, maxMutationRounds)
+                      expactedNumberOfInstructions, maxMutationRounds, fnCreateField)
 
     def test_mow_turn_jump(self):
         width = height = 8
@@ -148,11 +152,32 @@ class LownmowerTests(unittest.TestCase):
         maxGenes = int(1.5 * minGenes)
         maxMutationRounds = 1
         expactedNumberOfInstructions = 64
+
+        def fnCreateField():
+            return lawnmower.ToroidField(width, height, lawnmower.FieldContents.Grass)
+
         self.run_with(geneSet, width, height, minGenes, maxGenes,
-                      expactedNumberOfInstructions, maxMutationRounds)
+                      expactedNumberOfInstructions, maxMutationRounds, fnCreateField)
+
+    def test_mow_turn_jump_validating(self):
+        width = height = 8
+        geneSet = [lambda: Mow(),
+                   lambda: Turn(),
+                   lambda: Jump(random.randint(0, min(width, height)),
+                                random.randint(0, min(width, height)))]
+        minGenes =  width * height
+        maxGenes = int(1.5 * minGenes)
+        maxMutationRounds = 3
+        expactedNumberOfInstructions = 79
+
+        def fnCreateField():
+            return lawnmower.ValidatingField(width, height, lawnmower.FieldContents.Grass)
+
+        self.run_with(geneSet, width, height, minGenes, maxGenes,
+                      expactedNumberOfInstructions, maxMutationRounds, fnCreateField)
 
     def run_with(self, geneSet, width, height, minGenes, maxGenes,
-                 expactedNumberOfInstructions, maxMutationRounds):
+                 expactedNumberOfInstructions, maxMutationRounds, fnCreateField):
         mowerStartLocation = lawnmower.Location(int(width / 2), int(height / 2))
         mowerStartDirection = lawnmower.Directions.South.value
 
@@ -164,7 +189,7 @@ class LownmowerTests(unittest.TestCase):
         def fnEvaluate(instructions):
             program = Program(instructions)
             mower = lawnmower.Mower(mowerStartLocation, mowerStartDirection)
-            field = lawnmower.Field(width, height, lawnmower.FieldContents.Grass)
+            field = fnCreateField()
             program.evaluate(mower, field)
             return field, mower, program
 
