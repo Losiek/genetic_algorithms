@@ -43,9 +43,35 @@ class Jump:
         return "jump({},{})".format(self.Foward, self.Right)
 
 
+class Repeat:
+    def __init__(self, opCount, times):
+        self.OpCount = opCount
+        self.Times = times
+        self.Ops = []
+
+    def execute(self, mower, field):
+        for i in range(self.Times):
+            for op in self.Ops:
+                op.execute(mower, field)
+
+    def __str__(self):
+        return "repeat({},{})".format(
+                ' '.join(map(str, self.Ops))
+                if len(self.Ops) > 0
+                else self.OpCount,
+                self.Times)
+
+
 class Program:
     def __init__(self, instructions):
-        self.Main = instructions
+        temp = instructions[:]
+        for index in reversed(range(len(temp))):
+            if type(temp[index]) is Repeat:
+                start = index + 1
+                end = min(index + temp[index].OpCount + 1, len(temp))
+                temp[index].Ops = temp[start:end]
+                del temp[start:end]
+        self.Main = temp
 
     def evaluate(self, mower, field):
         for instructions in self.Main:
@@ -176,6 +202,23 @@ class LownmowerTests(unittest.TestCase):
         self.run_with(geneSet, width, height, minGenes, maxGenes,
                       expactedNumberOfInstructions, maxMutationRounds, fnCreateField)
 
+    def test_mow_turn_repeat(self):
+        width = height = 8
+        geneSet = [lambda: Mow(),
+                   lambda: Turn(),
+                   lambda: Repeat(random.randint(0, 8),
+                                  random.randint(0, 8))]
+        minGenes = 3
+        maxGenes = 20
+        maxMutationRounds = 3
+        expactedNumberOfInstructions = 6
+
+        def fnCreateField():
+            return lawnmower.ToroidField(width, height, lawnmower.FieldContents.Grass)
+
+        self.run_with(geneSet, width, height, minGenes, maxGenes,
+                      expactedNumberOfInstructions, maxMutationRounds, fnCreateField)
+
     def run_with(self, geneSet, width, height, minGenes, maxGenes,
                  expactedNumberOfInstructions, maxMutationRounds, fnCreateField):
         mowerStartLocation = lawnmower.Location(int(width / 2), int(height / 2))
@@ -190,7 +233,10 @@ class LownmowerTests(unittest.TestCase):
             program = Program(instructions)
             mower = lawnmower.Mower(mowerStartLocation, mowerStartDirection)
             field = fnCreateField()
-            program.evaluate(mower, field)
+            try:
+                program.evaluate(mower, field)
+            except RecursionError:
+                pass
             return field, mower, program
 
         def fnGetFitness(genes):
