@@ -63,16 +63,36 @@ class Repeat:
 
 
 class Func:
-    def __init__(self):
+    def __init__(self, expectCall=False):
         self.Ops = []
+        self.ExpectCall = expectCall
+        self.Id = None
 
     def execute(self, mower, field):
         for op in self.Ops:
             op.execute(mower, field)
 
     def __str__(self):
-        return "func: {}".format(' '.join(map(str, self.Ops))) \
-                if len(self.Ops) > 0 else "call-func"
+        return "func{1}: {0}".format(
+                ' '.join(map(str, self.Ops)),
+                self.Id if self.Id is not None else '')
+
+
+class Call:
+    def __init__(self, funcId=None):
+        self.FuncId = funcId
+        self.Funcs = None
+
+    def execute(self, mower, field):
+        funcId = 0 if self.FuncId is None else self.FuncId
+        if len(self.Funcs) > funcId:
+            self.Funcs[funcId].execute(mower, field)
+
+    def __str__(self):
+        return "call-{}".format(
+                self.FuncId
+                if self.FuncId is not None
+                else 'func')
 
 
 class Program:
@@ -81,7 +101,7 @@ class Program:
 
     def __init__(self, instructions):
         temp = instructions[:]
-        func = None
+        funcs = []
 
         for index in reversed(range(len(temp))):
             if type(temp[index]) is Repeat:
@@ -91,32 +111,55 @@ class Program:
                 del temp[start:end]
                 continue
 
+            if type(temp[index]) is Call:
+                temp[index].Funcs = funcs
+
             if type(temp[index]) is Func:
-                if func is not None:
-                    temp[index].Ops = []
+                if len(funcs) > 0 and not temp[index].ExpectCall:
+                    temp[index] = Call()
+                    temp[index].Funcs = funcs
                     continue
                 start = index + 1
                 end = len(temp)
-                temp[index].Ops = [i for i in temp[start:end]
+                func = Func()
+                if temp[index].ExpectCall:
+                    func.Id = len(funcs)
+                func.Ops = [i for i in temp[start:end]
                                    if type(i) is not Repeat or
                                    type(i) is Repeat and len(i.Ops) > 0
                                    ]
-                func = temp[index]
+                funcs.append(func)
                 del temp[index:end]
+
+        for func in funcs:
+            for index in reversed(range(len(func.Ops))):
+                if type(func.Ops[index]) is Call:
+                    func_id = func.Ops[index].FuncId
+                    if func_id is None:
+                        continue
+                    if func_id >= len(funcs) or len(funcs[func_id].Ops) == 0:
+                        del func.Ops[index]
+
+        for index in reversed(range(len(temp))):
+            if type(temp[index]) is Call:
+                func_id = temp[index].FuncId
+                if func_id is None:
+                    continue
+                if func_id >= len(funcs) or len(funcs[func_id].Ops) == 0:
+                    del temp[index]
         self.Main = temp
-        self.Func = func
+        self.Funcs = funcs
 
     def evaluate(self, mower, field):
         for i, instruction in enumerate(self.Main):
-                if type(instruction) is Func:
-                    self.Func.execute(mower, field)
-                    continue
-
-                instruction.execute(mower, field)
+            instruction.execute(mower, field)
 
     def print(self):
-        if self.Func is not None:
-            print(self.Func)
+        if self.Funcs is not None:
+            for func in self.Funcs:
+                if func.Id is not None and len(func.Ops) == 0:
+                    continue
+                print(func)
         print(' '.join(map(str, self.Main)))
 
 
@@ -273,6 +316,27 @@ class LawnmowerTests(unittest.TestCase):
                    lambda: Jump(random.randint(0, min(width, height)),
                                 random.randint(0, min(width, height))),
                    lambda: Func()]
+        minGenes = 3
+        maxGenes = 20
+        maxMutationRounds = 3
+        expactedNumberOfInstructions = 18
+        expactedNumberOfSteps = 65
+
+        def fnCreateField():
+            return lawnmower.ToroidField(width, height, lawnmower.FieldContents.Grass)
+
+        self.run_with(geneSet, width, height, minGenes, maxGenes,
+                      expactedNumberOfInstructions, maxMutationRounds, fnCreateField,
+                      expactedNumberOfSteps)
+
+    def test_mow_turn_jump_call(self):
+        width = height = 8
+        geneSet = [lambda: Mow(),
+                   lambda: Turn(),
+                   lambda: Jump(random.randint(0, min(width, height)),
+                                random.randint(0, min(width, height))),
+                   lambda: Func(expectCall=True),
+                   lambda: Call(random.randint(0,5))]
         minGenes = 3
         maxGenes = 20
         maxMutationRounds = 3
