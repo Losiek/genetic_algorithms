@@ -91,6 +91,17 @@ class CircuitTests(unittest.TestCase):
         optimalLenght = 6
         self.find_circuit(rules, optimalLenght)
 
+
+    def test_generate_XOR(self):
+        rules = [[[False, False], False],
+                 [[False, True], True],
+                 [[True, False], True],
+                 [[True, True], False]]
+
+        optimalLenght = 9
+        self.find_circuit(rules, optimalLenght)
+
+
     def find_circuit(self, rules, expectedLength):
         startTime = datetime.datetime.now()
         maxLength = expectedLength
