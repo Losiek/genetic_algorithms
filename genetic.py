@@ -8,8 +8,6 @@ from math import exp
 from enum import Enum
 
 
-
-
 def _generate_parent(length, geneSet, get_fitness):
     genes = []
     while len(genes) < length:
@@ -96,6 +94,25 @@ def get_best(get_fitness, targetLen, optimalFitness, geneSet, display,
         if not optimalFitness > improvement.Fitness:
             return improvement
 
+
+def hill_climbing(optimizationFunction, is_improvment, is_optimal,
+                  get_next_feature_value, display, initialFeatureValue):
+    best = optimizationFunction(initialFeatureValue)
+    stdout = sys.stdout
+    sys.stdout = None
+
+    while not is_optimal(best):
+        featureValue = get_next_feature_value(best)
+        child = optimizationFunction(featureValue)
+
+        if is_improvment(best, child):
+            best = child
+            sys.stdout = stdout
+            display(best, featureValue)
+            sys.stdout = None
+
+    sys.stdout = stdout
+    return best
 
 
 def _get_improvement(new_child, generate_parent, maxAge, poolSize, maxSeconds):
