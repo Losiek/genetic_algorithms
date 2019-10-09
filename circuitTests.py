@@ -33,7 +33,7 @@ def nodes_to_circuit(nodes):
 
 def get_fitness(genes, rules, inputs):
     circuit = nodes_to_circuit(genes)[0]
-    sourceLabels = "AB"
+    sourceLabels = "ABC"
     rulesPassed = 0
     for rule in rules:
         inputs.clear()
@@ -111,15 +111,31 @@ class CircuitTests(unittest.TestCase):
         optimalLenght = 9
         self.find_circuit(rules, optimalLenght)
 
+    def test_generate_AxBxC(self):
+        rules = [[[False, False, False], False],
+                 [[False, False, True], True],
+                 [[False, True, False], True],
+                 [[False, True, True], False],
+                 [[True, False, False], True],
+                 [[True, False, True], False],
+                 [[True, True, False], False],
+                 [[True, True, True], True]]
+        self.sources.append([lambda l, r: circuits.Source('C', self.inputs),
+                             circuits.Source])
+        self.gates.append([circuits.Or, circuits.Or])
+        self.find_circuit(rules, 12)
 
     def find_circuit(self, rules, expectedLength):
         startTime = datetime.datetime.now()
-        maxLength = expectedLength
+        maxLength = 50
 
         def fnCreate():
             return [fnCreateGene(i) for i in range(maxLength)]
 
-        def fnDisplay(candidate):
+        def fnDisplay(candidate, length=None):
+            if length is not None:
+                print("-- distinct nodes in circuit:", len(nodes_to_circuit(
+                    candidate.Genes)[1]))
             display(candidate, startTime)
 
         def fnCreateGene(index):
@@ -131,8 +147,28 @@ class CircuitTests(unittest.TestCase):
         def fnGetFitness(genes):
             return get_fitness(genes, rules, self.inputs)
 
-        best = genetic.get_best(fnGetFitness, None, len(rules), None, fnDisplay,
-                                fnMutate, fnCreate, poolSize=3)
+        def fnOptimizationFunction(variableLength):
+            nonlocal maxLength
+            maxLength = variableLength
+            return genetic.get_best(fnGetFitness, None, len(rules), None, fnDisplay,
+                                    fnMutate, fnCreate, poolSize=3, maxSeconds=30)
+
+        def fnIsImprovement(currentBest, child):
+            return child.Fitness == len(rules) and \
+                    len(nodes_to_circuit(childGenes)[1]) < \
+                    len(nodes_to_circuit(currentBest.Genes)[1])
+
+        def fnIsOptimal(child):
+            return child.Fitness == len(rules) and \
+                    len(nodes_to_circuit(child.Genes)[1]) <= expectedLength
+
+        def fnGetNextFeatureValue(currentBest):
+            return len(nodes_to_circuit(currentBest.Genes)[1])
+
+        best = genetic.hill_climbing(fnOptimizationFunction, fnIsImprovement,
+                                     fnIsOptimal, fnGetNextFeatureValue, fnDisplay,
+                                     maxLength)
+
         self.assertTrue(best.Fitness == len(rules))
         self.assertTrue(not len(nodes_to_circuit(best.Genes)[1]) > expectedLength)
 
