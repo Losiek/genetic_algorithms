@@ -1,4 +1,26 @@
-# Circuit infrastructure
+# circuits.py
+class Not:
+    def __init__(self, input):
+        self._input = input
+
+    def get_output(self):
+        if self._input is None:
+            return None
+        value = self._input.get_output()
+        if value is None:
+            return None
+        return not value
+
+    def __str__(self):
+        if self._input is None:
+            return "Not(?)"
+        return "Not({})".format(self._input)
+
+    @staticmethod
+    def input_count():
+        return 1
+
+
 class GateWith2Inputs:
     def __init__(self, inputA, inputB, label, fnTest):
         self._inputA = inputA
@@ -26,36 +48,23 @@ class GateWith2Inputs:
     def input_count():
         return 2
 
-class Not:
-    def __init__(self, input):
-        self._input = input
-
-    def get_output(self):
-        if self._input is None:
-            return None
-        value = self._input.get_output()
-        if value is None:
-            return None
-        return not value
-
-    def __str__(self):
-        if self._input is None:
-            return "Not(?)"
-        return "Not({})".format(self._input)
-
-    @staticmethod
-    def input_count():
-        return 1
-
 
 class And(GateWith2Inputs):
     def __init__(self, inputA, inputB):
-        super().__init__(inputA, inputB, type(self).__name__, lambda a, b: a and b)
+        super().__init__(inputA, inputB, type(self).__name__,
+                         lambda a, b: a and b)
 
 
 class Or(GateWith2Inputs):
     def __init__(self, inputA, inputB):
-        super().__init__(inputA, inputB, type(self).__name__, lambda a, b: a or b)
+        super().__init__(inputA, inputB, type(self).__name__,
+                         lambda a, b: a or b)
+
+
+class Xor(GateWith2Inputs):
+    def __init__(self, inputA, inputB):
+        super().__init__(inputA, inputB, type(self).__name__,
+                         lambda a, b: a != b)
 
 
 class Source:

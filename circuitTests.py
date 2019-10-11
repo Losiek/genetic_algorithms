@@ -33,7 +33,7 @@ def nodes_to_circuit(nodes):
 
 def get_fitness(genes, rules, inputs):
     circuit = nodes_to_circuit(genes)[0]
-    sourceLabels = "ABC"
+    sourceLabels = "ABCD"
     rulesPassed = 0
     for rule in rules:
         inputs.clear()
@@ -125,6 +125,43 @@ class CircuitTests(unittest.TestCase):
         self.gates.append([circuits.Or, circuits.Or])
         self.find_circuit(rules, 12)
 
+    def test_2_bit_adder_1s_bit(self):
+        rules = self.get_2_bit_adder_rules_for_bit(0)
+        self.find_circuit(rules, 3)
+
+    def test_2_bit_adder_2s_bit(self):
+        rules = self.get_2_bit_adder_rules_for_bit(1)
+        self.find_circuit(rules, 7)
+
+    def test_2_bit_adder_4s_bit(self):
+        rules = self.get_2_bit_adder_rules_for_bit(2)
+        self.find_circuit(rules, 9)
+
+    def get_2_bit_adder_rules_for_bit(self, bit):
+        rules = [[[False, False, False, False], [False, False, False]], # 0 + 0 = 0
+                 [[False, False, False, True], [False, False, True]], # 0 + 1 = 1
+                 [[False, False, True, False], [False, True, False]], # 0 + 2 = 2
+                 [[False, False, True, True], [False, True, True]], # 0 + 3 = 3
+                 [[False, True, False, False], [False, False, True]], # 1 + 0 = 1
+                 [[False, True, False, True], [False, True, False]], # 1 + 1 = 2
+                 [[False, True, True, False], [False, True, True]], # 1 + 2 = 3
+                 [[False, True, True, True], [True, False, False]], # 1 + 3 = 4
+                 [[True, False, False, False], [False, True, False]], # 2 + 0 = 2
+                 [[True, False, False, True], [False, True, True]], # 2 + 1 = 3
+                 [[True, False, True, False], [True, False, False]], # 2 + 2 = 4
+                 [[True, False, True, True], [True, False, True]], # 2 + 3 = 5
+                 [[True, True, False, False], [False, True, True]], # 3 + 0 = 3
+                 [[True, True, False, True], [True, False, False]], # 3 + 1 = 4
+                 [[True, True, True, False], [True, False, True]], # 3 + 2 = 5
+                 [[True, True, True, True], [True, True, False]]] # 3 + 3 = 6
+        bitNRules = [[rule[0], rule[1][2 - bit]] for rule in rules]
+
+        self.gates.append([circuits.Or, circuits.Or])
+        self.gates.append([circuits.Xor, circuits.Xor])
+        self.sources.append([lambda l, r: circuits.Source('C', self.inputs), circuits.Source])
+        self.sources.append([lambda l, r: circuits.Source('D', self.inputs), circuits.Source])
+        return bitNRules
+
     def find_circuit(self, rules, expectedLength):
         startTime = datetime.datetime.now()
         maxLength = 50
@@ -151,7 +188,7 @@ class CircuitTests(unittest.TestCase):
             nonlocal maxLength
             maxLength = variableLength
             return genetic.get_best(fnGetFitness, None, len(rules), None, fnDisplay,
-                                    fnMutate, fnCreate, poolSize=3, maxSeconds=30)
+                                    fnMutate, fnCreate, poolSize=3, maxSeconds=60)
 
         def fnIsImprovement(currentBest, child):
             return child.Fitness == len(rules) and \
