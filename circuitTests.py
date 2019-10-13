@@ -179,6 +179,21 @@ class CircuitTests(unittest.TestCase):
         )
         return bitNRules
 
+    def test_fib_num(self):
+        # 8 bit
+        # 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233
+        rules = []
+
+        self.gates.append([circuits.Or, circuits.Or])
+        self.gates.append([circuits.Xor, circuits.Xor])
+        self.sources.append(
+            [lambda l, r: circuits.Source("C", self.inputs), circuits.Source]
+        )
+        self.sources.append(
+            [lambda l, r: circuits.Source("D", self.inputs), circuits.Source]
+        )
+        self.find_circuit(rules, 20)
+
     def find_circuit(self, rules, expectedLength):
         startTime = datetime.datetime.now()
         maxLength = 50
