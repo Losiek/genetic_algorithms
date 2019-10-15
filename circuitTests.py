@@ -192,7 +192,35 @@ class CircuitTests(unittest.TestCase):
         self.sources.append(
             [lambda l, r: circuits.Source("D", self.inputs), circuits.Source]
         )
-        self.find_circuit(rules, 20)
+        rules = self.gen_fib_rules()
+
+        for bit_rules in rules:
+            print("Bit")
+            print("Rules: ", bit_rules)
+            self.find_circuit(bit_rules, 10)
+
+    def gen_fib_rules(self):
+        rules = []
+        def fib_seq(num):
+            fib = [0, 1]
+            for i in range(2,num):
+                fib.append(fib[i-1] + fib[i-2])
+            return fib
+        # 8 bit
+        fib_seq = fib_seq(14)
+        for out_bit in range(0,8):
+            rules.append([])
+            for input in range(0,2**4):
+                if input > len(fib_seq) - 1:
+                    break
+                f_bin = list('{:08b}'.format(fib_seq[input]))
+                f_bin = [1 if b == '1' else 0 for b in f_bin]
+                f_bin.reverse()
+                input_bin = list('{:04b}'.format(input))
+                input_bin = [1 if b == '1' else 0 for b in input_bin]
+                rules[-1].append([input_bin, f_bin[out_bit]])
+
+        return rules
 
     def find_circuit(self, rules, expectedLength):
         startTime = datetime.datetime.now()
@@ -230,7 +258,7 @@ class CircuitTests(unittest.TestCase):
                 fnMutate,
                 fnCreate,
                 poolSize=3,
-                maxSeconds=15,
+                maxSeconds=60,
             )
 
         def fnIsImprovement(currentBest, child):
