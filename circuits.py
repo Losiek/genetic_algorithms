@@ -49,6 +49,23 @@ class GateWith2Inputs:
         return 2
 
 
+class GateWithNInputs:
+    def __init__(self, inputN: list, label, fnTest):
+        self._inputN = inputN
+        self._label = label
+        self._fnTest = fnTest
+
+    def get_output(self):
+        pass
+
+    def __str__(self):
+        pass
+
+    @staticmethod
+    def input_count(self):
+        return len(self._inputN)
+
+
 class And(GateWith2Inputs):
     def __init__(self, inputA, inputB):
         super().__init__(inputA, inputB, type(self).__name__,
